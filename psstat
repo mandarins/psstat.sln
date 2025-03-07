@@ -1,0 +1,172 @@
+#!/bin/bash
+general_help ()
+{
+	echo "	Usage : psstat [ OPTION ] ..."
+	echo "	List process information ."
+	echo "	Options are"
+	echo "	--list-short list all processes in short format"
+	echo "	--list-long list all processes in long format"
+	echo "	--list-name-has <name_part> list all processes whose name has name_part in long"
+	echo "	format"
+	echo "	--list-pid- is <pid> list status of the process whose pid is <pid >"
+	echo "	--list-sched-policy-is <policy_number> list all processes whose CPU scheduling"
+	echo "	policy number is <policy_number> in long format"
+}
+
+pid_short ()
+{
+echo "pid"
+find /proc -maxdepth 1 -type d -regex '^/proc/[0-9]+$' -printf '%f\n'
+}
+
+list_long() {
+	printf "%-20s %-20s %-20s %-40s %s\n" "PID" "CMD" "ST" "CMD_ARGS"
+	
+    for pid in $(find /proc -maxdepth 1 -type d -regex '^/proc/[0-9]+$' -printf '%f\n'); do
+        if [ -f /proc/$pid/stat ] && [ -f /proc/$pid/cmdline ]; then
+            state=$(awk '{print $3}' /proc/$pid/stat)
+            cmd=$(awk '{print $2}' /proc/$pid/stat |  tr '()' '""')
+            cmd_args=$(tr '\0' ' ' < /proc/$pid/cmdline)
+			printf "%-20s %-20s %-20s %-40s %s\n" "$pid" "$cmd" "$state" "$cmd_args"
+        fi
+    done
+}
+
+list_name_has()
+{
+	if [ -z "$1" ]; then
+		echo "psstat --list-pid- is <pid>  ;list status of the process whose pid is <pid >"
+		exit 1
+	fi
+    
+	local name_part="$1"
+	printf "%-20s %-20s %-20s %-40s %s\n" "PID" "CMD" "ST" "CMD_ARGS"
+
+    local bfound=0 
+    for pid in $(find /proc -maxdepth 1 -type d -regex '^/proc/[0-9]+$' -printf '%f\n'); do
+        if [ -f /proc/$pid/stat ] && [ -f /proc/$pid/cmdline ]; then
+            state=$(awk '{print $3}' /proc/$pid/stat)
+            cmd=$(awk '{print $2}' /proc/$pid/stat)
+            cmd_args=$(tr '\0' ' ' < /proc/$pid/cmdline)
+			if [[ "$cmd" == *"$name_part"* ]]; then
+			   printf "%-20s %-20s %-20s %-40s %s\n" "$pid" "$cmd" "$state" "$cmd_args"
+			   let "bfound++"
+            fi
+        fi
+    done
+
+	if [ "$bfound" -eq 0 ]; then
+	   echo "Not found " $1
+	else
+	   echo "Found " $1 " in " $bfound " rows."
+	fi
+}
+
+list_pid_is() {
+    # field positions taken from https://man7.org/linux/man-pages/man5/proc_pid_stat.5.html
+	if [ -z "$1" ]; then
+			echo "Usage: --list-pid- is <pid>    ;list status of the process whose pid is <pid >"
+		exit 1
+	fi
+
+	local pid="$1"
+
+    # Check if the process directory exists
+    if [ ! -d "/proc/$pid" ]; then
+        echo "Process with PID $pid does not exist."
+        exit 1
+    fi
+
+    # Read process status information
+    local state=$(grep -i "State:" /proc/$pid/status | awk '{print $2}' )
+	# Use command substitution to set the local variable to the minflt value
+	local minflt=$(awk '{print $10}' /proc/$pid/stat)
+	local majflt=$(awk '{print $12}' /proc/$pid/stat)
+	local utime=$(awk '{print $14}' /proc/$pid/stat)
+	local stime=$(awk '{print $15}' /proc/$pid/stat)
+	local num_threads=$(awk '{print $20}' /proc/$pid/stat)
+	local vsize=$(awk '{print $23}' /proc/$pid/stat)
+	local rss=$(awk '{print $24}' /proc/$pid/stat)
+    # # Extract information from the status file
+
+    # Print the process information
+    #echo -e "comm		: $comm_line"
+	#echo -e "state		: $state"
+	# echo -e "minflt		: $minflt"
+	# echo -e "majflt		: $majflt"
+	# echo -e "utime 		: $utime clock ticks"
+	# echo -e "stime 		: $stime clock ticks"
+	# echo -e "num_threads	: $num_threads"
+	# echo -e "vsize 		: $vsize bytes"
+	# echo -e "rss 		: $rss pages"
+	
+	printf "%30s %-40s %s\n" "pid:" "$pid"
+	printf "%30s %-40s %s\n" "comm:" "$comm_line"
+	printf "%30s %-40s %s\n" "state:" "$state"
+	printf "%30s %-40s %s\n" "minflt:" "$minflt"
+	printf "%30s %-40s %s\n" "majflt:" "$majnflt"
+	printf "%30s %-40s %s\n" "utime:" "$utime"
+	printf "%30s %-40s %s\n" "stime:" "$stime"
+	printf "%30s %-40s %s\n" "num_threads:" "$num_threads"
+	printf "%30s %-40s %s\n" "vsize:" "$vsize"
+	printf "%30s %-40s %s\n" "rss:" "$rss"
+
+
+}
+
+list_policy_is()
+{
+	if [ -z "$1" ]; then
+			echo "Usage: --list-sched-policy-is <policy_number> ;list all processes whose CPU scheduling"
+		exit 1
+	fi
+    local policy="$1"
+    #echo -e "PID\tCMD\t\tST\tSCHED_POLICY\tCMD_ARGS"
+    printf "%-10s %-20s %-10s %-20s %-s\n" "PID" "CMD" "ST" "SCHED_POLICY" "CMD_ARGS"
+	    
+    for pid in $(find /proc -maxdepth 1 -type d -regex '^/proc/[0-9]+$' -printf '%f\n'); do
+        if [ -f /proc/$pid/stat ] && [ -f /proc/$pid/cmdline ] && [ -f /proc/$pid/sched ]; then
+            # Get the CPU scheduling policy
+            sched_policy=$(grep -i "policy" /proc/$pid/sched | awk '{print $3}')
+            if [ "$sched_policy" -eq "$policy" ]; then
+                cmd=$(awk '{print $2}' /proc/$pid/stat | tr '()' '""')
+                state=$(awk '{print $3}' /proc/$pid/stat)
+                cmd_args=$(tr '\0' ' ' < /proc/$pid/cmdline)
+                #echo -e "$pid\t$cmd\t\t$state\t$sched_policy\t$cmd_args"
+				printf "%-10s %-20s %-10s %-20s %-s\n" "$pid" "$cmd" "$state" "$sched_policy" "$cmd_args"
+            fi
+        fi
+    done
+}
+
+case "$1" in
+    --help)
+        general_help
+        exit 0
+        ;;
+    --list-short)
+        pid_short
+        exit 0
+        ;;
+    --list-long)
+        list_long
+        exit 0
+        ;;
+    --list-name-has)
+        list_name_has $2
+        exit 0
+        ;;		
+    --list-pid-is)
+        list_pid_is $2
+        exit 0
+        ;;
+    --list-sched-policy-is)
+        list_policy_is $2
+        exit 0
+        ;;		
+    *)
+        echo "Invalid option: $1"
+        general_help
+        exit 1
+        ;;
+esac
