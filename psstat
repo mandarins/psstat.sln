@@ -89,17 +89,6 @@ list_pid_is() {
 	local rss=$(awk '{print $24}' /proc/$pid/stat)
     # # Extract information from the status file
 
-    # Print the process information
-    #echo -e "comm		: $comm_line"
-	#echo -e "state		: $state"
-	# echo -e "minflt		: $minflt"
-	# echo -e "majflt		: $majflt"
-	# echo -e "utime 		: $utime clock ticks"
-	# echo -e "stime 		: $stime clock ticks"
-	# echo -e "num_threads	: $num_threads"
-	# echo -e "vsize 		: $vsize bytes"
-	# echo -e "rss 		: $rss pages"
-	
 	printf "%30s %-40s %s\n" "pid:" "$pid"
 	printf "%30s %-40s %s\n" "comm:" "$comm_line"
 	printf "%30s %-40s %s\n" "state:" "$state"
