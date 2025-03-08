@@ -68,8 +68,10 @@ list_pid_is() {
 			echo "Usage: --list-pid- is <pid>    ;list status of the process whose pid is <pid >"
 		exit 1
 	fi
-
+	
+	declare -A field_map
 	local pid="$1"
+
 
     # Check if the process directory exists
     if [ ! -d "/proc/$pid" ]; then
@@ -77,9 +79,8 @@ list_pid_is() {
         exit 1
     fi
 
-    # Read process status information
+    # Read process status information and place in local variables
     local state=$(grep -i "State:" /proc/$pid/status | awk '{print $2}' )
-	# Use command substitution to set the local variable to the minflt value
 	local minflt=$(awk '{print $10}' /proc/$pid/stat)
 	local majflt=$(awk '{print $12}' /proc/$pid/stat)
 	local utime=$(awk '{print $14}' /proc/$pid/stat)
@@ -87,13 +88,13 @@ list_pid_is() {
 	local num_threads=$(awk '{print $20}' /proc/$pid/stat)
 	local vsize=$(awk '{print $23}' /proc/$pid/stat)
 	local rss=$(awk '{print $24}' /proc/$pid/stat)
-    # # Extract information from the status file
 
+    # Print  status file information
 	printf "%30s %-40s %s\n" "pid:" "$pid"
 	printf "%30s %-40s %s\n" "comm:" "$comm_line"
 	printf "%30s %-40s %s\n" "state:" "$state"
 	printf "%30s %-40s %s\n" "minflt:" "$minflt"
-	printf "%30s %-40s %s\n" "majflt:" "$majnflt"
+	printf "%30s %-40s %s\n" "majflt:" "$majflt"
 	printf "%30s %-40s %s\n" "utime:" "$utime"
 	printf "%30s %-40s %s\n" "stime:" "$stime"
 	printf "%30s %-40s %s\n" "num_threads:" "$num_threads"
