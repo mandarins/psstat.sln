@@ -1,4 +1,8 @@
 #!/bin/bash
+
+### Salvatore Lentini
+### CISC 7310X 
+### PSSTAT project
 general_help ()
 {
 	echo "	Usage : psstat [ OPTION ] ..."
